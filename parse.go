@@ -3,9 +3,10 @@ The MIT License (MIT)
 
 Copyright (c) 2017 Nicholas Van Wiggeren  https://github.com/nickvanw/infping
 Copyright (c) 2018 Michael Newton         https://github.com/miken32/infping
+Copyright (c) 2020 Gerdriaan Mulder       https://github.com/mrngm/infping
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal 
+of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
@@ -26,7 +27,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"log"
 	"os"
 	"os/exec"
@@ -38,26 +38,16 @@ import (
 var hostname = mustHostname()
 var last_time = time.Now()
 
-// Point represents the fping results for a single host
-type Point struct {
-	Time        time.Time
-	RxHost      string
-	TxHost      string
-	LossPercent int
-	Min         float64
-	Avg         float64
-	Max         float64
-}
-
-// runAndRead executes fping, parses the output into a Point, and then writes it to Influx
-func runAndRead(ctx context.Context, hosts []string, con Client, fpingConfig map[string]string) error {
-	args := []string(nil)
-	for k, v := range fpingConfig {
+// runAndRead executes fping, parses the output into an FPingPoint, and then writes it to InfPingClient
+func runAndRead(hosts []string, con InfPingClient, cfg FPingConfig) error {
+	args := make([]string, 0, len(cfg)+len(hosts))
+	for k, v := range cfg {
 		args = append(args, k, v)
 	}
 	for _, v := range hosts {
 		args = append(args, v)
 	}
+	log.Printf("args: %q", args)
 	cmd, err := exec.LookPath("fping")
 	if err != nil {
 		return err
@@ -72,6 +62,7 @@ func runAndRead(ctx context.Context, hosts []string, con Client, fpingConfig map
 	buff := bufio.NewScanner(stderr)
 	for buff.Scan() {
 		text := buff.Text()
+		log.Printf("raw: %q", text)
 		fields := strings.Fields(text)
 
 		if len(fields) == 1 {
@@ -98,8 +89,17 @@ func runAndRead(ctx context.Context, hosts []string, con Client, fpingConfig map
 				td := strings.Split(times, "/")
 				min, avg, max = mustFloat(td[0]), mustFloat(td[1]), mustFloat(td[2])
 			}
-			pt := Point{RxHost: host, Min: min, Max: max, Avg: avg, LossPercent: lossp, Time: last_time}
-			pt.TxHost = hostname
+
+			pt := FPingPoint{
+				TxHost:      hostname,
+				RxHost:      host,
+				Min:         min,
+				Max:         max,
+				Avg:         avg,
+				LossPercent: lossp,
+				Time:        last_time,
+			}
+
 			if err := con.Write(pt); err != nil {
 				log.Printf("Error writing data point: %s", err)
 			}

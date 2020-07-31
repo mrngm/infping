@@ -7,7 +7,7 @@
 		"secure": false,
 		"db": "infping"
 	},
-	"infping": {
+	"fping": {
 		"backoff": "1",
 		"retries": "0",
 		"tos": "0",

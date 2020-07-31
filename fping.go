@@ -1,9 +1,6 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2016 Tor Hveem              https://github.com/torhve/infping
-Copyright (c) 2017 Nicholas Van Wiggeren  https://github.com/nickvanw/infping
-Copyright (c) 2018 Michael Newton         https://github.com/miken32/infping
 Copyright (c) 2020 Gerdriaan Mulder       https://github.com/mrngm/infping
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,36 +25,49 @@ SOFTWARE.
 package main
 
 import (
-	"log"
-	"strings"
+	"fmt"
+	"time"
 
 	"github.com/spf13/viper"
 )
 
-// InfPingClient defines how results can be obtained from this program
-type InfPingClient interface {
-	Write(point FPingPoint) error
+type FPingConfig map[string]string
+
+// FPingPoint represents the fping results for a single host
+type FPingPoint struct {
+	Time        time.Time
+	RxHost      string
+	TxHost      string
+	LossPercent int
+	Min         float64
+	Avg         float64
+	Max         float64
 }
 
-func main() {
-	if err := InitConfiguration(); err != nil {
-		log.Fatalf("Unable to read config file: %v", err)
+func (fp FPingPoint) String() string {
+	return fmt.Sprintf("[%v] (%s) %s: %.2f/%.2f/%.2f (%d%%)\n", fp.Time.Format("2006-01-02 15:04:05"), fp.RxHost, fp.TxHost, fp.Min, fp.Avg, fp.Max, fp.LossPercent)
+}
+
+func SetupFPing() FPingConfig {
+	cfg := FPingConfig{
+		"-B": viper.GetString("fping.backoff"),
+		"-r": viper.GetString("fping.retries"),
+		"-O": viper.GetString("fping.tos"),
+		"-Q": viper.GetString("fping.summary"),
+		"-p": viper.GetString("fping.period"),
+		"-l": "",
+		"-D": "",
 	}
 
-	var client InfPingClient
-	if viper.GetBool("influx.enabled") {
-		log.Print("InfluxDB enabled, setting up client")
-		client = SetupInfluxDBClient()
-	} else {
-		log.Print("Setting up mock client")
-		client = SetupMockClient()
+	if viper.GetBool("fping.dualstack") {
+		cfg["-m"] = "" // send to all addresses
+		cfg["-n"] = "" // show DNS names
+		cfg["-A"] = "" // display address
 	}
 
-	log.Print("Setting up fping")
-	fpingCfg := SetupFPing()
-
-	hosts := viper.GetStringSlice("hosts.hosts")
-
-	log.Printf("Launching fping with hosts: %s", strings.Join(hosts, ", "))
-	runAndRead(hosts, client, fpingCfg)
+	fpingCustom := viper.GetStringMapString("fping.custom")
+	for k, v := range fpingCustom {
+		cfg[k] = v
+	}
+	return cfg
 }

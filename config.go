@@ -1,9 +1,6 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2016 Tor Hveem              https://github.com/torhve/infping
-Copyright (c) 2017 Nicholas Van Wiggeren  https://github.com/nickvanw/infping
-Copyright (c) 2018 Michael Newton         https://github.com/miken32/infping
 Copyright (c) 2020 Gerdriaan Mulder       https://github.com/mrngm/infping
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,36 +25,33 @@ SOFTWARE.
 package main
 
 import (
-	"log"
-	"strings"
-
 	"github.com/spf13/viper"
 )
 
-// InfPingClient defines how results can be obtained from this program
-type InfPingClient interface {
-	Write(point FPingPoint) error
-}
+func InitConfiguration() error {
+	viper.SetDefault("influx.enabled", false)
+	viper.SetDefault("influx.host", "localhost")
+	viper.SetDefault("influx.port", "8086")
+	viper.SetDefault("influx.user", "")
+	viper.SetDefault("influx.pass", "")
+	viper.SetDefault("influx.secure", false)
+	viper.SetDefault("influx.db", "infping")
 
-func main() {
-	if err := InitConfiguration(); err != nil {
-		log.Fatalf("Unable to read config file: %v", err)
-	}
+	viper.SetDefault("fping.backoff", "1")
+	viper.SetDefault("fping.retries", "0")
+	viper.SetDefault("fping.tos", "0")
+	viper.SetDefault("fping.summary", "10")
+	viper.SetDefault("fping.period", "1000")
+	viper.SetDefault("fping.dualstack", false)
+	viper.SetDefault("fping.custom", map[string]string{})
 
-	var client InfPingClient
-	if viper.GetBool("influx.enabled") {
-		log.Print("InfluxDB enabled, setting up client")
-		client = SetupInfluxDBClient()
-	} else {
-		log.Print("Setting up mock client")
-		client = SetupMockClient()
-	}
+	viper.SetDefault("hosts.hosts", []string{"localhost"})
 
-	log.Print("Setting up fping")
-	fpingCfg := SetupFPing()
+	viper.SetConfigName("infping")
+	viper.AddConfigPath("/etc/")
+	viper.AddConfigPath("/usr/local/etc/")
+	viper.AddConfigPath("/config/")
+	viper.AddConfigPath(".")
 
-	hosts := viper.GetStringSlice("hosts.hosts")
-
-	log.Printf("Launching fping with hosts: %s", strings.Join(hosts, ", "))
-	runAndRead(hosts, client, fpingCfg)
+	return viper.ReadInConfig()
 }

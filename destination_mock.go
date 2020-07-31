@@ -1,9 +1,6 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2016 Tor Hveem              https://github.com/torhve/infping
-Copyright (c) 2017 Nicholas Van Wiggeren  https://github.com/nickvanw/infping
-Copyright (c) 2018 Michael Newton         https://github.com/miken32/infping
 Copyright (c) 2020 Gerdriaan Mulder       https://github.com/mrngm/infping
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,36 +25,17 @@ SOFTWARE.
 package main
 
 import (
-	"log"
-	"strings"
-
-	"github.com/spf13/viper"
+    "fmt"
+    "os"
 )
 
-// InfPingClient defines how results can be obtained from this program
-type InfPingClient interface {
-	Write(point FPingPoint) error
+type MockClient struct {}
+
+func SetupMockClient() InfPingClient {
+    return &MockClient{}
 }
 
-func main() {
-	if err := InitConfiguration(); err != nil {
-		log.Fatalf("Unable to read config file: %v", err)
-	}
-
-	var client InfPingClient
-	if viper.GetBool("influx.enabled") {
-		log.Print("InfluxDB enabled, setting up client")
-		client = SetupInfluxDBClient()
-	} else {
-		log.Print("Setting up mock client")
-		client = SetupMockClient()
-	}
-
-	log.Print("Setting up fping")
-	fpingCfg := SetupFPing()
-
-	hosts := viper.GetStringSlice("hosts.hosts")
-
-	log.Printf("Launching fping with hosts: %s", strings.Join(hosts, ", "))
-	runAndRead(hosts, client, fpingCfg)
+func (m *MockClient) Write(p FPingPoint) error {
+    _, err := fmt.Fprintf(os.Stdout, "%s", p)
+    return err
 }
