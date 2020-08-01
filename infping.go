@@ -34,6 +34,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	debugMode = false
+)
+
 // InfPingClient defines how results can be obtained from this program
 type InfPingClient interface {
 	Write(point FPingPoint) error
@@ -43,6 +47,7 @@ func main() {
 	if err := InitConfiguration(); err != nil {
 		log.Fatalf("Unable to read config file: %v", err)
 	}
+	debugMode = viper.GetBool("infping.debug")
 
 	var client InfPingClient
 	if viper.GetBool("influx.enabled") {

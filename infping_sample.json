@@ -1,5 +1,6 @@
 {
 	"influx": {
+		"enabled": false,
 		"host": "localhost",
 		"port": "8086",
 		"user": "",
@@ -13,11 +14,15 @@
 		"tos": "0",
 		"summary": "10",
 		"period": "1000",
+		"dualstack": false,
 		"custom": {}
 	},
 	"hosts": {
 		"hosts": [
 			"localhost"
 		]
+	},
+	"infping": {
+		"debug": false
 	}
 }

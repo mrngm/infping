@@ -45,7 +45,9 @@ func runAndRead(con InfPingClient, cfg FPingConfig, hosts []string) error {
 	for _, v := range hosts {
 		args = append(args, v)
 	}
-	log.Printf("args: %q", args)
+	if debugMode {
+		log.Printf("args: %q", args)
+	}
 	cmd, err := exec.LookPath("fping")
 	if err != nil {
 		return err
@@ -61,7 +63,9 @@ func runAndRead(con InfPingClient, cfg FPingConfig, hosts []string) error {
 	buff := bufio.NewScanner(stderr)
 	for buff.Scan() {
 		text := buff.Text()
-		log.Printf("raw: %q", text)
+		if debugMode {
+			log.Printf("raw: %q", text)
+		}
 
 		rxHost := ""
 

@@ -47,6 +47,8 @@ func InitConfiguration() error {
 
 	viper.SetDefault("hosts.hosts", []string{"localhost"})
 
+	viper.SetDefault("infping.debug", false)
+
 	viper.SetConfigName("infping")
 	viper.AddConfigPath("/etc/")
 	viper.AddConfigPath("/usr/local/etc/")

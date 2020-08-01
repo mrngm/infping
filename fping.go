@@ -76,7 +76,9 @@ func FPingExtractTimestamp(s string) (time.Time, error) {
 
 	now := time.Now()
 	t := time.Date(now.Year(), now.Month(), now.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.Local)
-	log.Printf("parsed time: %v", t)
+	if debugMode {
+		log.Printf("parsed time: %v", t)
+	}
 	return t, nil
 }
 
@@ -87,7 +89,9 @@ func FPingExtractHostnameIP(s string) string {
 	}
 
 	host := fmt.Sprintf("%s (%s)", matches[1], matches[2])
-	log.Printf("parsed hostname+ip: %q", host)
+	if debugMode {
+		log.Printf("parsed hostname+ip: %q", host)
+	}
 	return host
 }
 
@@ -97,7 +101,9 @@ func FPingExtractHostnameOnly(s string) string {
 		return ""
 	}
 
-	log.Printf("parsed hostname: %q", host[1])
+	if debugMode {
+		log.Printf("parsed hostname: %q", host[1])
+	}
 	return host[1]
 }
 
@@ -111,7 +117,9 @@ func FPingExtractMinAvgMax(s string) (min, avg, max float64) {
 	min, _ = strconv.ParseFloat(matches[1], 64)
 	avg, _ = strconv.ParseFloat(matches[2], 64)
 	max, _ = strconv.ParseFloat(matches[3], 64)
-	log.Printf("parsed min/avg/max: %.2f/%.2f/%.2f", min, avg, max)
+	if debugMode {
+		log.Printf("parsed min/avg/max: %.2f/%.2f/%.2f", min, avg, max)
+	}
 	return min, avg, max
 }
 
@@ -123,7 +131,9 @@ func FPingExtractLossPercentage(s string) int {
 
 	// The regexp asserts we matched a decimal number, so we can ignore the error returned by strconv.Atoi
 	lossp, _ := strconv.Atoi(matches[3])
-	log.Printf("parsed loss percentage: %d", lossp)
+	if debugMode {
+		log.Printf("parsed loss percentage: %d", lossp)
+	}
 	return lossp
 }
 
