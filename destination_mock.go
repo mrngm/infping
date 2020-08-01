@@ -25,17 +25,17 @@ SOFTWARE.
 package main
 
 import (
-    "fmt"
-    "os"
+	"fmt"
+	"os"
 )
 
-type MockClient struct {}
+type MockClient struct{}
 
 func SetupMockClient() InfPingClient {
-    return &MockClient{}
+	return &MockClient{}
 }
 
 func (m *MockClient) Write(p FPingPoint) error {
-    _, err := fmt.Fprintf(os.Stdout, "%s", p)
-    return err
+	_, err := fmt.Fprintf(os.Stdout, "%s", p)
+	return err
 }

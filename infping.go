@@ -59,5 +59,5 @@ func main() {
 	hosts := viper.GetStringSlice("hosts.hosts")
 
 	log.Printf("Launching fping with hosts: %s", strings.Join(hosts, ", "))
-	runAndRead(hosts, client, fpingCfg)
+	log.Fatalf("%v", runAndRead(hosts, client, fpingCfg))
 }
