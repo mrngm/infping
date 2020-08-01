@@ -31,26 +31,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
-	"strconv"
 	"time"
 )
 
-var (
-	hostname  = mustHostname()
-	last_time = time.Now()
-
-	fpingTimeRegexp = regexp.MustCompile(`^\[(?P<time>\d\d:\d\d:\d\d)\]$`)
-	// "localhost : xmt/rcv/%loss = 10/10/0%, min/avg/max = 0.02/0.06/0.08"
-	fpingSingleRegexp = regexp.MustCompile(`^(?P<dns>[^ ]+)\s+:`)
-	// "localhost (::1)       : xmt/rcv/%loss = 10/10/0%, min/avg/max = 0.04/0.06/0.07"
-	fpingDualstackRegexp  = regexp.MustCompile(`^(?P<dns>[^ ]+)\s+\((?P<ip>[^)]+)\)\s+:`)
-	fpingXmtRcvLossRegexp = regexp.MustCompile(`xmt/rcv/%loss\s+=\s+(?P<xmt>\d+)/(?P<rcv>\d+)/(?P<loss>\d+)%,`)
-	fpingMinAvgMaxRegexp  = regexp.MustCompile(`min/avg/max\s+=\s+(?P<min>\d+\.\d+)/(?P<avg>\d+\.\d+)/(?P<max>\d+\.\d+)$`)
-)
-
 // runAndRead executes fping, parses the output into an FPingPoint, and then writes it to InfPingClient
-func runAndRead(hosts []string, con InfPingClient, cfg FPingConfig) error {
+func runAndRead(con InfPingClient, cfg FPingConfig, hosts []string) error {
+	hostname := mustHostname()
+
 	args := make([]string, 0, len(cfg)+len(hosts))
 	for k, v := range cfg {
 		args = append(args, k, v)
@@ -70,42 +57,32 @@ func runAndRead(hosts []string, con InfPingClient, cfg FPingConfig) error {
 	}
 	runner.Start()
 
+	last_time := time.Now()
 	buff := bufio.NewScanner(stderr)
 	for buff.Scan() {
 		text := buff.Text()
 		log.Printf("raw: %q", text)
 
-		min, max, avg := 0.0, 0.0, 0.0
-		lossp := 0
 		rxHost := ""
 
 		// Decide what type of line this is
-		switch {
-		case fpingTimeRegexp.MatchString(text):
-			t, err := time.Parse("15:04:05", fpingTimeRegexp.FindStringSubmatch(text)[1])
+		switch FPingLineType(text) {
+		case FPingOutputTime:
+			last_time, err = FPingExtractTimestamp(text)
 			if err != nil {
-				return fmt.Errorf("cannot parse time in line: %q, %v", text, err)
+				return err
 			}
-			now := time.Now()
-			last_time = time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local)
-			log.Printf("parsed time: %v", last_time)
 			continue
-		case fpingDualstackRegexp.MatchString(text):
-			matches := fpingDualstackRegexp.FindStringSubmatch(text)
-			rxHost = fmt.Sprintf("%s (%s)", matches[1], matches[2])
-			log.Printf("parsed rxHost: %q", rxHost)
-		case fpingSingleRegexp.MatchString(text):
-			rxHost = fpingSingleRegexp.FindStringSubmatch(text)[1]
-			log.Printf("parsed rxHost: %q", rxHost)
+		case FPingOutputHostnameOnly:
+			rxHost = FPingExtractHostnameOnly(text)
+		case FPingOutputHostnameIP:
+			rxHost = FPingExtractHostnameIP(text)
 		default:
 			return fmt.Errorf("unrecognized format: %q", text)
 		}
 
-		lossp = mustInt(fpingXmtRcvLossRegexp.ReplaceAllString(text, "${loss}"))
-		minAvgMax := fpingMinAvgMaxRegexp.FindStringSubmatch(text)
-		min = mustFloat(minAvgMax[1])
-		avg = mustFloat(minAvgMax[2])
-		max = mustFloat(minAvgMax[3])
+		min, avg, max := FPingExtractMinAvgMax(text)
+		lossp := FPingExtractLossPercentage(text)
 
 		pt := FPingPoint{
 			TxHost:      hostname,
@@ -122,24 +99,6 @@ func runAndRead(hosts []string, con InfPingClient, cfg FPingConfig) error {
 		}
 	}
 	return nil
-}
-
-// mustInt ensures the string contains an integer, returning 0 if not
-func mustInt(data string) int {
-	in, err := strconv.Atoi(data)
-	if err != nil {
-		return 0
-	}
-	return in
-}
-
-// mustFloat ensures the string contains a float, returning 0.0 if not
-func mustFloat(data string) float64 {
-	flt, err := strconv.ParseFloat(data, 64)
-	if err != nil {
-		return 0.0
-	}
-	return flt
 }
 
 // mustHostname returns the local hostname or throws an error
